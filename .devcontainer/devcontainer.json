@@ -1,0 +1,7 @@
+{
+  "name": "Petshop",
+  "dockerComposeFile": "docker-compose.yml",
+  "service": "app",
+  "workspaceFolder": "/workspaces/petshop",
+  "forwardPorts": [3000]
+}
