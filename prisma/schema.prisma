@@ -38,3 +38,18 @@ model RefreshToken {
   revokedAt  DateTime?
   createdAt  DateTime @default(now())
 }
+
+enum AtendimentoStatus {
+  agendado
+  confirmado
+  em_atendimento
+  finalizado
+  cancelado
+}
+
+model Atendimento {
+  id        Int                @id @default(autoincrement())
+  status    AtendimentoStatus  @default(agendado)
+  createdAt DateTime           @default(now())
+  updatedAt DateTime           @updatedAt
+}
