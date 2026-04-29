@@ -25,7 +25,28 @@ async function create(req, res, next) {
   }
 }
 
+async function index(req, res, next) {
+  try {
+    const atendimentos = await atendimentoService.findAll();
+    return res.status(200).json(atendimentos);
+  } catch (error) {
+    return next(error);
+  }
+}
+
+async function show(req, res, next) {
+  try {
+    const { id } = req.params;
+    const atendimento = await atendimentoService.findById(Number(id));
+    return res.status(200).json(atendimento);
+  } catch (error) {
+    return next(error);
+  }
+}
+
 module.exports = {
   create,
   updateStatus,
+  index,
+  show
 };

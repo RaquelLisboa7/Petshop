@@ -5,6 +5,10 @@ const authorize = require("../middlewares/authorize.middleware");
 
 const router = Router();
 
+router.get("/", authMiddleware, authorize("admin", "atendente"), atendimentoController.index);
+
+router.get("/:id", authMiddleware, authorize("admin", "atendente"), atendimentoController.show);
+
 router.patch(
   "/:id/status",
   authMiddleware,

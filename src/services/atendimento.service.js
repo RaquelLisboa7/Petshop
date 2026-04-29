@@ -93,7 +93,37 @@ async function create({ agendamentoId }) {
   return atendimento;
 }
 
+async function findAll() {
+  return await prisma.atendimento.findMany({
+    include: {
+      user: true,
+      agendamento: true,
+    },
+    orderBy: {
+      createdAt: "desc",
+    },
+  });
+}
+
+async function findById(id) {
+  const atendimento = await prisma.atendimento.findUnique({
+    where: { id },
+    include: {
+      user: true,
+      agendamento: true,
+    },
+  });
+
+  if (!atendimento) {
+    throw new AppError("Atendimento não encontrado", 404);
+  }
+
+  return atendimento;
+}
+
 module.exports = {
   updateStatus,
-  create
+  create,
+  findAll,
+  findById
 };
