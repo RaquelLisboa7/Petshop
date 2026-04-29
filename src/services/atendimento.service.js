@@ -46,6 +46,54 @@ async function updateStatus(atendimentoId, newStatus) {
   return updated;
 }
 
+async function create({ agendamentoId }) {
+  const agendamento = await prisma.agendamento.findUnique({
+    where: { id: agendamentoId },
+    include: {
+  user: {
+    select: {
+      id: true,
+      name: true,
+      email: true,
+      role: true,
+    },
+  },
+  atendimento: true,
+}
+  });
+
+  if (!agendamento) {
+    throw new AppError("Agendamento não encontrado", 404);
+  }
+
+  if (agendamento.atendimento) {
+    throw new AppError("Já existe atendimento para este agendamento", 400);
+  }
+
+  if (agendamento.status === "cancelado") {
+    throw new AppError("Não é possível criar atendimento para agendamento cancelado", 400);
+  } 
+  
+  if (agendamento.status !== "confirmado") {
+  throw new AppError("Atendimento só pode ser criado para agendamento confirmado", 400);
+}
+
+  const atendimento = await prisma.atendimento.create({
+    data: {
+      userId: agendamento.userId,
+      agendamentoId: agendamento.id,
+      status: "agendado",
+    },
+    include: {
+      user: true,
+      agendamento: true,
+    },
+  });
+
+  return atendimento;
+}
+
 module.exports = {
   updateStatus,
+  create
 };

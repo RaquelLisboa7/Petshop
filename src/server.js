@@ -8,7 +8,6 @@ const routes = require("./routes/index");
 const errorMiddleware = require("./middlewares/error.middleware");
 const notFoundMiddleware = require("./middlewares/not-found.middleware");
 
-
 const app = express();
 
 app.set("trust proxy", 1);
@@ -26,12 +25,12 @@ app.use(
 
 app.use(routes);
 
-app.use(notFoundMiddleware);
-app.use(errorMiddleware);
-
 app.get("/", (req, res) => {
   res.send("API rodando");
 });
+
+app.use(notFoundMiddleware);
+app.use(errorMiddleware);
 
 app.listen(6500, () => {
   console.log("Servidor em pé na porta 6500");

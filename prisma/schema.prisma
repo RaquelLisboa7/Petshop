@@ -17,6 +17,12 @@ enum Role {
   cliente
 }
 
+enum AgendamentoStatus {
+  criado
+  confirmado
+  cancelado
+}
+
 
 model User {
   id        Int      @id @default(autoincrement())
@@ -27,6 +33,8 @@ model User {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
   refreshTokens RefreshToken[]
+  agendamentos   Agendamento[]
+  atendimentos   Atendimento[]
 }
 
 model RefreshToken {
@@ -48,8 +56,23 @@ enum AtendimentoStatus {
 }
 
 model Atendimento {
-  id        Int                @id @default(autoincrement())
-  status    AtendimentoStatus  @default(agendado)
-  createdAt DateTime           @default(now())
-  updatedAt DateTime           @updatedAt
+  id             Int                @id @default(autoincrement())
+  status         AtendimentoStatus  @default(agendado)
+  createdAt      DateTime           @default(now())
+  updatedAt      DateTime           @updatedAt
+  userId         Int
+  user           User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  agendamentoId  Int                @unique
+  agendamento    Agendamento        @relation(fields: [agendamentoId], references: [id], onDelete: Cascade)
+}
+
+model Agendamento {
+  id           Int                @id @default(autoincrement())
+  userId       Int
+  user         User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  dataHora     DateTime
+  status       AgendamentoStatus  @default(criado)
+  atendimento  Atendimento?
+  createdAt    DateTime           @default(now())
+  updatedAt    DateTime           @updatedAt
 }

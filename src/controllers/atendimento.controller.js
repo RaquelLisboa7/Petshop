@@ -1,5 +1,6 @@
 const atendimentoService = require("../services/atendimento.service");
-const { updateStatusSchema } = require("../validations/atendimento.validation");
+const { createAtendimentoSchema, updateStatusSchema } = require("../validations/atendimento.validation");
+
 
 async function updateStatus(req, res, next) {
   try {
@@ -14,6 +15,17 @@ async function updateStatus(req, res, next) {
   }
 }
 
+async function create(req, res, next) {
+  try {
+    const data = createAtendimentoSchema.parse(req.body);
+    const atendimento = await atendimentoService.create(data);
+    return res.status(201).json(atendimento);
+  } catch (error) {
+    return next(error);
+  }
+}
+
 module.exports = {
+  create,
   updateStatus,
 };

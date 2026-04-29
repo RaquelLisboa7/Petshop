@@ -10,6 +10,11 @@ const updateStatusSchema = z.object({
   ]),
 });
 
+const createAtendimentoSchema = z.object({
+  agendamentoId: z.number().int().positive(),
+});
+
 module.exports = {
   updateStatusSchema,
+  createAtendimentoSchema,
 };

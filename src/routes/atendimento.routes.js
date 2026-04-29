@@ -12,4 +12,11 @@ router.patch(
   atendimentoController.updateStatus
 );
 
+router.post(
+  "/",
+  authMiddleware,
+  authorize("admin", "atendente"),
+  atendimentoController.create
+);
+
 module.exports = router;
