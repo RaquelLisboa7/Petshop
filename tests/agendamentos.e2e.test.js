@@ -14,7 +14,6 @@ describe("Fluxo de agendamento", () => {
       role: "cliente",
     });
 
-
     expect(registerRes.status).toBe(201);
     expect(registerRes.body).toHaveProperty("id");
 
@@ -45,6 +44,40 @@ describe("Fluxo de agendamento", () => {
     expect(createRes.body.userId).toBe(loginRes.body.user.id);
     expect(createRes.body.status).toBe("criado");
   });
+
+  it("não deve permitir agendamento em horário já ocupado", async () => {
+  const email = `cliente_dup_${Date.now()}@email.com`;
+
+  await request(app).post("/auth/register").send({
+    name: "Cliente Dup",
+    email,
+    password: "123456",
+    role: "cliente",
+  });
+
+  const loginRes = await request(app).post("/auth/login").send({
+    email,
+    password: "123456",
+  });
+
+  const token = loginRes.body.accessToken;
+
+  const date = new Date(Date.now() + 2 * 60 * 60 * 1000).toISOString();
+
+  const first = await request(app)
+    .post("/agendamentos")
+    .set("Authorization", `Bearer ${token}`)
+    .send({ dataHora: date });
+
+  expect(first.status).toBe(201);
+
+  const second = await request(app)
+    .post("/agendamentos")
+    .set("Authorization", `Bearer ${token}`)
+    .send({ dataHora: date });
+
+  expect(second.status).toBe(409);
+});
   
 });
 
