@@ -1,5 +1,6 @@
 const { prisma } = require("../lib/prisma");
 const AppError = require("../errors/app.error");
+const { logAction } = require("./audit-log.service");
 
 const statusFlow = {
   agendado: ["confirmado", "cancelado"],
@@ -9,7 +10,7 @@ const statusFlow = {
   cancelado: [],
 };
 
-async function updateStatus(atendimentoId, newStatus) {
+async function updateStatus(atendimentoId, newStatus, actor) {
   const atendimento = await prisma.atendimento.findUnique({
     where: { id: atendimentoId },
   });
@@ -21,10 +22,9 @@ async function updateStatus(atendimentoId, newStatus) {
   const currentStatus = atendimento.status;
 
   if (currentStatus === newStatus) {
-  throw new AppError("Status já está definido", 400);
-}
+    throw new AppError("Status já está definido", 400);
+  }
 
-  // bloqueia se já estiver finalizado ou cancelado
   if (["finalizado", "cancelado"].includes(currentStatus)) {
     throw new AppError("Não é possível alterar este atendimento", 400);
   }
@@ -38,28 +38,41 @@ async function updateStatus(atendimentoId, newStatus) {
     );
   }
 
-  const updated = await prisma.atendimento.update({
-    where: { id: atendimentoId },
-    data: { status: newStatus },
+  const updated = await prisma.$transaction(async (tx) => {
+    const result = await tx.atendimento.update({
+      where: { id: atendimentoId },
+      data: { status: newStatus },
+    });
+
+    await logAction(tx, {
+      action: "ATENDIMENTO_STATUS_ALTERADO",
+      entity: "Atendimento",
+      entityId: atendimentoId,
+      actorId: actor.userId,
+      actorRole: actor.role,
+      details: `${currentStatus} -> ${newStatus}`,
+    });
+
+    return result;
   });
 
   return updated;
 }
 
-async function create({ agendamentoId }) {
+async function create({ agendamentoId, actor }) {
   const agendamento = await prisma.agendamento.findUnique({
     where: { id: agendamentoId },
     include: {
-  user: {
-    select: {
-      id: true,
-      name: true,
-      email: true,
-      role: true,
+      user: {
+        select: {
+          id: true,
+          name: true,
+          email: true,
+          role: true,
+        },
+      },
+      atendimento: true,
     },
-  },
-  atendimento: true,
-}
   });
 
   if (!agendamento) {
@@ -71,52 +84,43 @@ async function create({ agendamentoId }) {
   }
 
   if (agendamento.status === "cancelado") {
-    throw new AppError("Não é possível criar atendimento para agendamento cancelado", 400);
-  } 
-  
-  if (agendamento.status !== "confirmado") {
-  throw new AppError("Atendimento só pode ser criado para agendamento confirmado", 400);
-}
-
-  const atendimento = await prisma.atendimento.create({
-    data: {
-      userId: agendamento.userId,
-      agendamentoId: agendamento.id,
-      status: "agendado",
-    },
-    include: {
-      user: true,
-      agendamento: true,
-    },
-  });
-
-  return atendimento;
-}
-
-async function findAll() {
-  return await prisma.atendimento.findMany({
-    include: {
-      user: true,
-      agendamento: true,
-    },
-    orderBy: {
-      createdAt: "desc",
-    },
-  });
-}
-
-async function findById(id) {
-  const atendimento = await prisma.atendimento.findUnique({
-    where: { id },
-    include: {
-      user: true,
-      agendamento: true,
-    },
-  });
-
-  if (!atendimento) {
-    throw new AppError("Atendimento não encontrado", 404);
+    throw new AppError(
+      "Não é possível criar atendimento para agendamento cancelado",
+      400
+    );
   }
+
+  if (agendamento.status !== "confirmado") {
+    throw new AppError(
+      "Atendimento só pode ser criado para agendamento confirmado",
+      400
+    );
+  }
+
+  const atendimento = await prisma.$transaction(async (tx) => {
+    const created = await tx.atendimento.create({
+      data: {
+        userId: agendamento.userId,
+        agendamentoId: agendamento.id,
+        status: "agendado",
+      },
+      include: {
+        user: true,
+        agendamento: true,
+      },
+    });
+
+    await logAction(tx, {
+      action: "ATENDIMENTO_CRIADO",
+      entity: "Atendimento",
+      entityId: created.id,
+      actorId: actor.userId,
+      actorRole: actor.role,
+      details: `Criado a partir do agendamento ${agendamento.id}`,
+    });
+
+    return created;
+  });
 
   return atendimento;
 }
@@ -124,6 +128,4 @@ async function findById(id) {
 module.exports = {
   updateStatus,
   create,
-  findAll,
-  findById
 };

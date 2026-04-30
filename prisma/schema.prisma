@@ -35,6 +35,7 @@ model User {
   refreshTokens RefreshToken[]
   agendamentos   Agendamento[]
   atendimentos   Atendimento[]
+  auditLogs AuditLog[]
 }
 
 model RefreshToken {
@@ -81,4 +82,20 @@ model Agendamento {
   updatedBy    Int?
   canceledBy   Int?
   canceledAt   DateTime?
+}
+
+model AuditLog {
+  id         Int      @id @default(autoincrement())
+  action     String
+  entity     String
+  entityId   Int
+  actorId    Int?
+  actorRole  Role?
+  details    String?
+  createdAt  DateTime @default(now())
+
+  actor      User?    @relation(fields: [actorId], references: [id], onDelete: SetNull)
+
+  @@index([entity, entityId])
+  @@index([createdAt])
 }

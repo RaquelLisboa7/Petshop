@@ -1,9 +1,9 @@
 const { prisma } = require("../lib/prisma");
 const AppError = require("../errors/app.error");
+const { logAction } = require("./audit-log.service");
 
 const MAX_AGENDAMENTOS_DIA = 10;
-const CANCELAMENTO_ANTECEDENCIA_MIN = 120; 
-
+const CANCELAMENTO_ANTECEDENCIA_MIN = 120;
 
 async function create({ userId, dataHora }) {
   const date = new Date(dataHora);
@@ -13,7 +13,7 @@ async function create({ userId, dataHora }) {
       where: {
         dataHora: date,
         status: {
-         in: ["criado", "confirmado"],
+          in: ["criado", "confirmado"],
         },
       },
     });
@@ -29,36 +29,45 @@ async function create({ userId, dataHora }) {
     endOfDay.setUTCHours(23, 59, 59, 999);
 
     const totalNoDia = await tx.agendamento.count({
-        where: {
-            dataHora: {
-            gte: startOfDay,
-            lte: endOfDay,
-            },
-            status: {
-            in: ["criado", "confirmado"],
-            },
+      where: {
+        dataHora: {
+          gte: startOfDay,
+          lte: endOfDay,
         },
-        });
+        status: {
+          in: ["criado", "confirmado"],
+        },
+      },
+    });
 
     if (totalNoDia >= MAX_AGENDAMENTOS_DIA) {
-        throw new AppError("Limite de agendamentos por dia atingido", 409);
+      throw new AppError("Limite de agendamentos por dia atingido", 409);
     }
 
     const agendamento = await tx.agendamento.create({
-  data: {
-    userId,
-    dataHora: date,
-    status: "criado",
-    createdBy: userId,
-  },
-});
+      data: {
+        userId,
+        dataHora: date,
+        status: "criado",
+        createdBy: userId,
+      },
+    });
+
+    await logAction(tx, {
+      action: "AGENDAMENTO_CRIADO",
+      entity: "Agendamento",
+      entityId: agendamento.id,
+      actorId: userId,
+      actorRole: "cliente",
+      details: `Agendamento criado para ${date.toISOString()}`,
+    });
 
     return agendamento;
   });
 }
 
 async function cancel({ agendamentoId, actor }) {
-    return await prisma.$transaction(async (tx) => {
+  return await prisma.$transaction(async (tx) => {
     const agendamento = await tx.agendamento.findUnique({
       where: { id: agendamentoId },
     });
@@ -83,22 +92,36 @@ async function cancel({ agendamentoId, actor }) {
       const diffMin = diffMs / 1000 / 60;
 
       if (diffMin < CANCELAMENTO_ANTECEDENCIA_MIN) {
-        throw new AppError("Cancelamento permitido apenas com 2h de antecedência", 409);
+        throw new AppError(
+          "Cancelamento permitido apenas com 2h de antecedência",
+          409
+        );
       }
     }
 
     const updated = await tx.agendamento.update({
-     where: { id: agendamentoId },
-     data: {
-      status: "cancelado",
-      canceledBy: actor.userId,
-      canceledAt: new Date(),
-  },
-});
+      where: { id: agendamentoId },
+      data: {
+        status: "cancelado",
+        canceledBy: actor.userId,
+        canceledAt: new Date(),
+      },
+    });
+
+    await logAction(tx, {
+      action: "AGENDAMENTO_CANCELADO",
+      entity: "Agendamento",
+      entityId: agendamentoId,
+      actorId: actor.userId,
+      actorRole: actor.role,
+      details: `Agendamento cancelado por ${actor.role}`,
+    });
+
     return updated;
   });
 }
 
-module.exports = { create ,
-    cancel
+module.exports = {
+  create,
+  cancel,
 };
