@@ -228,6 +228,58 @@ it("admin deve acessar qualquer agendamento", async () => {
   expect(response.body.id).toBe(agendamento.body.id);
 });
 
+it("admin deve cancelar agendamento de outro usuário", async () => {
+  const emailCliente = `cliente_admin_cancel_${Date.now()}@email.com`;
+
+  await request(app).post("/auth/register").send({
+    name: "Cliente",
+    email: emailCliente,
+    password: "123456",
+    role: "cliente",
+  });
+
+  const loginCliente = await request(app).post("/auth/login").send({
+    email: emailCliente,
+    password: "123456",
+  });
+
+  const tokenCliente = loginCliente.body.accessToken;
+
+  const date = getFutureDate(3);
+
+  const agendamento = await request(app)
+    .post("/agendamentos")
+    .set("Authorization", `Bearer ${tokenCliente}`)
+    .send({ dataHora: date });
+
+  expect(agendamento.status).toBe(201);
+
+  const agendamentoId = agendamento.body.id;
+
+  // criar admin
+  const emailAdmin = `admin_cancel_${Date.now()}@email.com`;
+
+  await request(app).post("/auth/register").send({
+    name: "Admin",
+    email: emailAdmin,
+    password: "123456",
+    role: "admin",
+  });
+
+  const loginAdmin = await request(app).post("/auth/login").send({
+    email: emailAdmin,
+    password: "123456",
+  });
+
+  const tokenAdmin = loginAdmin.body.accessToken;
+
+  const cancel = await request(app)
+    .patch(`/agendamentos/${agendamentoId}/cancelar`)
+    .set("Authorization", `Bearer ${tokenAdmin}`);
+
+  expect(cancel.status).toBe(200);
+});
+
 });
 
 afterAll(async () => {
