@@ -73,6 +73,12 @@ model Agendamento {
   dataHora     DateTime
   status       AgendamentoStatus  @default(criado)
   atendimento  Atendimento?
+
   createdAt    DateTime           @default(now())
   updatedAt    DateTime           @updatedAt
+
+  createdBy    Int?
+  updatedBy    Int?
+  canceledBy   Int?
+  canceledAt   DateTime?
 }

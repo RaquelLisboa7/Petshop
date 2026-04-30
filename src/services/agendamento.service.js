@@ -45,19 +45,20 @@ async function create({ userId, dataHora }) {
     }
 
     const agendamento = await tx.agendamento.create({
-      data: {
-        userId,
-        dataHora: date,
-        status: "criado",
-      },
-    });
+  data: {
+    userId,
+    dataHora: date,
+    status: "criado",
+    createdBy: userId,
+  },
+});
 
     return agendamento;
   });
 }
 
 async function cancel({ agendamentoId, actor }) {
-  return await prisma.$transaction(async (tx) => {
+    return await prisma.$transaction(async (tx) => {
     const agendamento = await tx.agendamento.findUnique({
       where: { id: agendamentoId },
     });
@@ -87,10 +88,13 @@ async function cancel({ agendamentoId, actor }) {
     }
 
     const updated = await tx.agendamento.update({
-      where: { id: agendamentoId },
-      data: { status: "cancelado" },
-    });
-
+     where: { id: agendamentoId },
+     data: {
+      status: "cancelado",
+      canceledBy: actor.userId,
+      canceledAt: new Date(),
+  },
+});
     return updated;
   });
 }
