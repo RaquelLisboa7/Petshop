@@ -14,6 +14,7 @@ datasource db {
 enum Role {
   admin
   atendente
+  veterinario
   cliente
 }
 
@@ -23,19 +24,50 @@ enum AgendamentoStatus {
   cancelado
 }
 
+enum AtendimentoStatus {
+  agendado
+  confirmado
+  em_atendimento
+  finalizado
+  cancelado
+}
+
+enum TipoAgendamento {
+  consulta
+  retorno
+  vacina
+  cirurgia
+  exame
+  internacao
+}
+
+enum TipoProntuarioItem {
+  consulta
+  vacina
+  exame
+  cirurgia
+  internacao
+  tratamento
+  observacao
+}
+
 
 model User {
   id        Int      @id @default(autoincrement())
   name      String
   email     String   @unique
   password  String
-  role      Role   @default(cliente)
+  role      Role     @default(cliente)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+
   refreshTokens RefreshToken[]
-  agendamentos   Agendamento[]
-  atendimentos   Atendimento[]
-  auditLogs AuditLog[]
+  pets Pet[] @relation("TutorPets")
+  agendamentos Agendamento[] @relation("TutorAgendamentos")
+  atendimentosExecutados Atendimento[] @relation("VeterinarioAtendimentos")
+  prontuarioItensCriados ProntuarioItem[] @relation("ProntuarioCriadoPor")
+  auditLogs AuditLog[] @relation("AuditActor")
+  atendimentosComoTutor Atendimento[] @relation("TutorAtendimentos")
 }
 
 model RefreshToken {
@@ -48,40 +80,58 @@ model RefreshToken {
   createdAt  DateTime @default(now())
 }
 
-enum AtendimentoStatus {
-  agendado
-  confirmado
-  em_atendimento
-  finalizado
-  cancelado
-}
 
 model Atendimento {
-  id             Int                @id @default(autoincrement())
-  status         AtendimentoStatus  @default(agendado)
-  createdAt      DateTime           @default(now())
-  updatedAt      DateTime           @updatedAt
-  userId         Int
-  user           User               @relation(fields: [userId], references: [id], onDelete: Cascade)
-  agendamentoId  Int                @unique
-  agendamento    Agendamento        @relation(fields: [agendamentoId], references: [id], onDelete: Cascade)
+  id            Int               @id @default(autoincrement())
+  status        AtendimentoStatus @default(agendado)
+
+  agendamentoId Int               @unique
+  agendamento   Agendamento       @relation(fields: [agendamentoId], references: [id], onDelete: Cascade)
+
+  petId         Int
+  pet           Pet               @relation(fields: [petId], references: [id], onDelete: Cascade)
+
+  tutorId       Int
+  tutor         User              @relation("TutorAtendimentos", fields: [tutorId], references: [id], onDelete: Cascade)
+
+  veterinarioId Int?
+  veterinario   User?             @relation("VeterinarioAtendimentos", fields: [veterinarioId], references: [id], onDelete: SetNull)
+
+  anamnese      String?
+  diagnostico   String?
+  conduta       String?
+  prescricao    String?
+
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
 }
 
 model Agendamento {
-  id           Int                @id @default(autoincrement())
-  userId       Int
-  user         User               @relation(fields: [userId], references: [id], onDelete: Cascade)
-  dataHora     DateTime
-  status       AgendamentoStatus  @default(criado)
-  atendimento  Atendimento?
+  id        Int              @id @default(autoincrement())
 
-  createdAt    DateTime           @default(now())
-  updatedAt    DateTime           @updatedAt
+  tutorId   Int
+  tutor     User             @relation("TutorAgendamentos", fields: [tutorId], references: [id], onDelete: Cascade)
 
-  createdBy    Int?
-  updatedBy    Int?
-  canceledBy   Int?
-  canceledAt   DateTime?
+  petId     Int
+  pet       Pet              @relation(fields: [petId], references: [id], onDelete: Cascade)
+
+  tipo      TipoAgendamento   @default(consulta)
+  dataHora  DateTime
+  status    AgendamentoStatus @default(criado)
+  observacao String?
+
+  atendimento Atendimento?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  createdBy  Int?
+  updatedBy  Int?
+  canceledBy Int?
+  canceledAt DateTime?
+
+  @@index([petId, dataHora])
+  @@index([tutorId, dataHora])
 }
 
 model AuditLog {
@@ -94,8 +144,63 @@ model AuditLog {
   details    String?
   createdAt  DateTime @default(now())
 
-  actor      User?    @relation(fields: [actorId], references: [id], onDelete: SetNull)
+  actor      User?    @relation("AuditActor", fields: [actorId], references: [id], onDelete: SetNull)
 
   @@index([entity, entityId])
   @@index([createdAt])
+}
+
+
+model Pet {
+  id        Int      @id @default(autoincrement())
+  name      String
+  species   String
+  breed     String?
+  sex       String?
+  birthDate DateTime?
+  weight    Float?
+  castrated Boolean  @default(false)
+  photoUrl  String?
+  notes     String?
+
+  tutorId   Int
+  tutor     User     @relation("TutorPets", fields: [tutorId], references: [id], onDelete: Cascade)
+
+  agendamentos Agendamento[]
+  atendimentoHistorico Atendimento[]
+  prontuario  Prontuario?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([tutorId, name])
+}
+
+model Prontuario {
+  id        Int      @id @default(autoincrement())
+  petId     Int      @unique
+  pet       Pet      @relation(fields: [petId], references: [id], onDelete: Cascade)
+
+  itens     ProntuarioItem[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model ProntuarioItem {
+  id           Int                @id @default(autoincrement())
+  prontuarioId  Int
+  prontuario    Prontuario         @relation(fields: [prontuarioId], references: [id], onDelete: Cascade)
+
+  tipo         TipoProntuarioItem
+  titulo       String
+  descricao    String?
+  dataEvento   DateTime?
+
+  createdById   Int?
+  createdBy     User?              @relation("ProntuarioCriadoPor", fields: [createdById], references: [id], onDelete: SetNull)
+
+  createdAt     DateTime @default(now())
+
+  @@index([prontuarioId, createdAt])
 }

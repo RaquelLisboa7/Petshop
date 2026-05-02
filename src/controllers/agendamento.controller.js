@@ -1,13 +1,19 @@
 const agendamentoService = require("../services/agendamento.service");
-const { createAgendamentoSchema,  cancelAgendamentoSchema, } = require("../validations/agendamento.validation");
+const {
+  createAgendamentoSchema,
+  cancelAgendamentoSchema,
+} = require("../validations/agendamento.validation");
 
 async function create(req, res, next) {
   try {
     const data = createAgendamentoSchema.parse(req.body);
 
     const agendamento = await agendamentoService.create({
-      userId: Number(req.user.sub),
+      tutorId: Number(req.user.sub),
+      petId: data.petId,
       dataHora: data.dataHora,
+      tipo: data.tipo,
+      observacao: data.observacao,
     });
 
     return res.status(201).json(agendamento);
@@ -63,9 +69,9 @@ async function show(req, res, next) {
   }
 }
 
-module.exports = { 
-    create,
-    cancel,
-    index,
-    show
- };
+module.exports = {
+  create,
+  cancel,
+  index,
+  show,
+};

@@ -5,10 +5,20 @@ const { logAction } = require("./audit-log.service");
 const MAX_AGENDAMENTOS_DIA = 10;
 const CANCELAMENTO_ANTECEDENCIA_MIN = 120;
 
-async function create({ userId, dataHora }) {
+async function create({ tutorId, petId, dataHora, tipo = "consulta", observacao }) {
   const date = new Date(dataHora);
 
   return await prisma.$transaction(async (tx) => {
+    // 🔒 validar se pet pertence ao tutor
+    const pet = await tx.pet.findUnique({
+      where: { id: petId },
+    });
+
+    if (!pet || pet.tutorId !== tutorId) {
+      throw new AppError("Pet não encontrado para este tutor", 404);
+    }
+
+    // ⚠️ conflito de horário (clínica inteira)
     const conflito = await tx.agendamento.findFirst({
       where: {
         dataHora: date,
@@ -22,6 +32,7 @@ async function create({ userId, dataHora }) {
       throw new AppError("Horário já ocupado", 409);
     }
 
+    // 📅 limite por dia
     const startOfDay = new Date(date);
     startOfDay.setUTCHours(0, 0, 0, 0);
 
@@ -44,12 +55,16 @@ async function create({ userId, dataHora }) {
       throw new AppError("Limite de agendamentos por dia atingido", 409);
     }
 
+    // ✅ criar agendamento
     const agendamento = await tx.agendamento.create({
       data: {
-        userId,
+        tutorId,
+        petId,
+        tipo,
+        observacao,
         dataHora: date,
         status: "criado",
-        createdBy: userId,
+        createdBy: tutorId,
       },
     });
 
@@ -57,14 +72,15 @@ async function create({ userId, dataHora }) {
       action: "AGENDAMENTO_CRIADO",
       entity: "Agendamento",
       entityId: agendamento.id,
-      actorId: userId,
+      actorId: tutorId,
       actorRole: "cliente",
-      details: `Agendamento criado para ${date.toISOString()}`,
+      details: `Agendamento criado para ${date.toISOString()} (petId: ${petId})`,
     });
 
     return agendamento;
   });
 }
+
 
 async function cancel({ agendamentoId, actor }) {
   return await prisma.$transaction(async (tx) => {
@@ -80,7 +96,7 @@ async function cancel({ agendamentoId, actor }) {
       throw new AppError("Agendamento já cancelado", 400);
     }
 
-    const isOwner = agendamento.userId === actor.userId;
+    const isOwner = agendamento.tutorId === actor.userId;
     const isStaff = ["admin", "atendente"].includes(actor.role);
 
     if (!isOwner && !isStaff) {
@@ -125,14 +141,22 @@ async function findAll(actor) {
  const where = {};
 
 if (actor.role === "cliente") {
-  where.userId = actor.userId;
+  where.tutorId = actor.userId;
 }
 
   return prisma.agendamento.findMany({
     where,
-    include: {
-      user: true,
-      atendimento: true,
+   include: {
+  tutor: {
+    select: {
+      id: true,
+      name: true,
+      email: true,
+      role: true,
+    },
+  },
+  pet: true,
+  atendimento: true,
     },
     orderBy: {
       createdAt: "desc",
@@ -144,8 +168,8 @@ if (actor.role === "cliente") {
 async function findById(id, actor) {
   const agendamento = await prisma.agendamento.findUnique({
     where: { id },
-    include: {
-  user: {
+   include: {
+  tutor: {
     select: {
       id: true,
       name: true,
@@ -153,15 +177,16 @@ async function findById(id, actor) {
       role: true,
     },
   },
+  pet: true,
   atendimento: true,
-  }
+  },
   });
 
   if (!agendamento) {
     throw new AppError("Agendamento não encontrado", 404);
   }
 
-  if (actor.role === "cliente" && agendamento.userId !== actor.userId) {
+  if (actor.role === "cliente" && agendamento.tutorId !== actor.userId) {
     throw new AppError("Acesso negado", 403);
   }
 

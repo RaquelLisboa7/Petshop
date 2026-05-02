@@ -1,6 +1,8 @@
 const atendimentoService = require("../services/atendimento.service");
-const { createAtendimentoSchema, updateStatusSchema } = require("../validations/atendimento.validation");
-
+const {
+  createAtendimentoSchema,
+  updateStatusSchema,
+} = require("../validations/atendimento.validation");
 
 async function updateStatus(req, res, next) {
   try {
@@ -42,7 +44,11 @@ async function create(req, res, next) {
 
 async function index(req, res, next) {
   try {
-    const atendimentos = await atendimentoService.findAll();
+    const atendimentos = await atendimentoService.findAll({
+      userId: Number(req.user.sub),
+      role: req.user.role,
+    });
+
     return res.status(200).json(atendimentos);
   } catch (error) {
     return next(error);
@@ -52,7 +58,12 @@ async function index(req, res, next) {
 async function show(req, res, next) {
   try {
     const { id } = req.params;
-    const atendimento = await atendimentoService.findById(Number(id));
+
+    const atendimento = await atendimentoService.findById(Number(id), {
+      userId: Number(req.user.sub),
+      role: req.user.role,
+    });
+
     return res.status(200).json(atendimento);
   } catch (error) {
     return next(error);

@@ -63,12 +63,22 @@ async function create({ agendamentoId, actor }) {
   const agendamento = await prisma.agendamento.findUnique({
     where: { id: agendamentoId },
     include: {
-      user: {
+      tutor: {
         select: {
           id: true,
           name: true,
           email: true,
           role: true,
+        },
+      },
+      pet: {
+        select: {
+          id: true,
+          name: true,
+          species: true,
+          breed: true,
+          sex: true,
+          castrated: true,
         },
       },
       atendimento: true,
@@ -100,13 +110,39 @@ async function create({ agendamentoId, actor }) {
   const atendimento = await prisma.$transaction(async (tx) => {
     const created = await tx.atendimento.create({
       data: {
-        userId: agendamento.userId,
+        tutorId: agendamento.tutorId,
+        petId: agendamento.petId,
         agendamentoId: agendamento.id,
         status: "agendado",
       },
       include: {
-        user: true,
+        tutor: {
+          select: {
+            id: true,
+            name: true,
+            email: true,
+            role: true,
+          },
+        },
+        pet: {
+          select: {
+            id: true,
+            name: true,
+            species: true,
+            breed: true,
+            sex: true,
+            castrated: true,
+          },
+        },
         agendamento: true,
+        veterinario: {
+          select: {
+            id: true,
+            name: true,
+            email: true,
+            role: true,
+          },
+        },
       },
     });
 
@@ -125,7 +161,100 @@ async function create({ agendamentoId, actor }) {
   return atendimento;
 }
 
+async function findAll(actor) {
+  const where = {};
+
+  // cliente só vê os próprios atendimentos
+  if (actor.role === "cliente") {
+    where.tutorId = actor.userId;
+  }
+
+  return prisma.atendimento.findMany({
+    where,
+    include: {
+      tutor: {
+        select: {
+          id: true,
+          name: true,
+          email: true,
+          role: true,
+        },
+      },
+      pet: {
+        select: {
+          id: true,
+          name: true,
+          species: true,
+          breed: true,
+          sex: true,
+          castrated: true,
+        },
+      },
+      agendamento: true,
+      veterinario: {
+        select: {
+          id: true,
+          name: true,
+          email: true,
+          role: true,
+        },
+      },
+    },
+    orderBy: {
+      createdAt: "desc",
+    },
+  });
+}
+
+async function findById(id, actor) {
+  const atendimento = await prisma.atendimento.findUnique({
+    where: { id },
+    include: {
+      tutor: {
+        select: {
+          id: true,
+          name: true,
+          email: true,
+          role: true,
+        },
+      },
+      pet: {
+        select: {
+          id: true,
+          name: true,
+          species: true,
+          breed: true,
+          sex: true,
+          castrated: true,
+        },
+      },
+      agendamento: true,
+      veterinario: {
+        select: {
+          id: true,
+          name: true,
+          email: true,
+          role: true,
+        },
+      },
+    },
+  });
+
+  if (!atendimento) {
+    throw new AppError("Atendimento não encontrado", 404);
+  }
+
+  // cliente só acessa o próprio
+  if (actor.role === "cliente" && atendimento.tutorId !== actor.userId) {
+    throw new AppError("Acesso negado", 403);
+  }
+
+  return atendimento;
+}
+
 module.exports = {
   updateStatus,
   create,
+  findAll,
+  findById
 };
