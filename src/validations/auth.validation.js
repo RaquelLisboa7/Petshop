@@ -4,7 +4,7 @@ const registerSchema = z.object({
   name: z.string().trim().min(2, "Nome precisa ter pelo menos 2 caracteres"),
   email: z.string().trim().email("Email inválido"),
   password: z.string().min(6, "Senha precisa ter pelo menos 6 caracteres"),
-  role: z.enum(["admin", "atendente", "cliente"]).optional(),
+  role: z.enum(["admin", "atendente", "cliente", "veterinario" ]).optional(),
 });
 
 const loginSchema = z.object({
