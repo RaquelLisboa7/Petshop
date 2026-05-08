@@ -6,10 +6,13 @@
   "type": "commonjs",
   "scripts": {
     "start:dev": "nodemon index.js",
-    "start": "tabela.js",
+    "start": "node src/server.js",
     "dev": "node --watch src/server.js",
     "test": "jest --runInBand",
     "test:watch": "jest --watch"
+  },
+   "prisma": {
+    "seed": "node prisma/seed.js"
   },
   "keywords": [],
   "author": "",

@@ -155,7 +155,16 @@ if (actor.role === "cliente") {
       role: true,
     },
   },
-  pet: true,
+  pet: {
+  select: {
+    id: true,
+    name: true,
+    species: true,
+    breed: true,
+    sex: true,
+    castrated: true,
+    },
+  },
   atendimento: true,
     },
     orderBy: {
@@ -177,7 +186,16 @@ async function findById(id, actor) {
       role: true,
     },
   },
-  pet: true,
+  pet: {
+  select: {
+    id: true,
+    name: true,
+    species: true,
+    breed: true,
+    sex: true,
+    castrated: true,
+    },
+  },
   atendimento: true,
   },
   });

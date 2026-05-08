@@ -36,7 +36,16 @@ async function register({ name, email, password, role = "cliente" }) {
 }
 
 async function login({ email, password }) {
-  const user = await prisma.user.findUnique({ where: { email } });
+  const user = await prisma.user.findUnique({
+    where: { email },
+    select: {
+      id: true,
+      name: true,
+      email: true,
+      password: true,
+      role: true,
+    },
+  });
 
   if (!user) {
     throw new AppError("Credenciais inválidas", 401);
@@ -49,10 +58,10 @@ async function login({ email, password }) {
   }
 
   const accessToken = jwt.sign(
-  { sub: String(user.id), role: user.role },
-  process.env.JWT_SECRET,
-  { expiresIn: "1h" }
-);
+    { sub: String(user.id), role: user.role },
+    process.env.JWT_SECRET,
+    { expiresIn: "1h" }
+  );
 
   const refreshToken = generateRefreshToken();
   const tokenHash = hashToken(refreshToken);
@@ -77,6 +86,7 @@ async function login({ email, password }) {
   };
 }
 
+
 async function refresh({ refreshToken }) {
   if (!refreshToken) {
     throw new AppError("Refresh token não fornecido", 401);
@@ -86,7 +96,18 @@ async function refresh({ refreshToken }) {
 
   const storedToken = await prisma.refreshToken.findUnique({
     where: { tokenHash },
-    include: { user: true },
+    select: {
+      tokenHash: true,
+      revokedAt: true,
+      expiresAt: true,
+      user: {
+        select: {
+          id: true,
+          role: true,
+        },
+      },
+      userId: true,
+    },
   });
 
   if (
@@ -125,6 +146,7 @@ async function refresh({ refreshToken }) {
     refreshToken: newRefreshToken,
   };
 }
+
 
 async function logout({ refreshToken }) {
   if (!refreshToken) {

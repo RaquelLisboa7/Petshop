@@ -34,7 +34,14 @@ async function findAll(actor) {
               castrated: true,
             },
           },
-          agendamento: true,
+         agendamento: {
+            select: {
+              id: true,
+              dataHora: true,
+              status: true,
+              tipo: true,
+            },
+          },
         },
       },
       createdBy: {
@@ -76,7 +83,14 @@ async function findById(id, actor) {
               castrated: true,
             },
           },
-          agendamento: true,
+         agendamento: {
+            select: {
+              id: true,
+              dataHora: true,
+              status: true,
+              tipo: true,
+            },
+          },
         },
       },
       createdBy: {
