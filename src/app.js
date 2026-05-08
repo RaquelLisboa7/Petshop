@@ -6,6 +6,8 @@ const rateLimit = require("express-rate-limit");
 const routes = require("./routes/index");
 const errorMiddleware = require("./middlewares/error.middleware");
 const notFoundMiddleware = require("./middlewares/not-found.middleware");
+const swaggerUi = require("swagger-ui-express");
+const swaggerSpec = require("./docs/swagger");
 
 const app = express();
 
@@ -22,6 +24,8 @@ app.use(
 );
 
 app.use(routes);
+
+app.use("/docs", swaggerUi.serve, swaggerUi.setup(swaggerSpec));
 
 app.get("/", (req, res) => {
   res.send("API rodando");

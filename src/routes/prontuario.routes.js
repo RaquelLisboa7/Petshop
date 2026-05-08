@@ -5,6 +5,16 @@ const authorize = require("../middlewares/authorize.middleware");
 
 const router = Router();
 
+
+/**
+ * @swagger
+ * /prontuarios/pets/{petId}:
+ *   get:
+ *     summary: Busca prontuário do pet
+ *     tags: [Prontuarios]
+ *     security:
+ *       - bearerAuth: []
+ */
 router.get(
   "/pets/:petId",
   authMiddleware,
@@ -12,6 +22,15 @@ router.get(
   prontuarioController.show
 );
 
+/**
+ * @swagger
+ * /prontuarios/pets/{petId}/itens:
+ *   get:
+ *     summary: Lista itens do prontuário do pet
+ *     tags: [Prontuarios]
+ *     security:
+ *       - bearerAuth: []
+ */
 router.get(
   "/pets/:petId/itens",
   authMiddleware,
@@ -19,6 +38,15 @@ router.get(
   prontuarioController.listItems
 );
 
+/**
+ * @swagger
+ * /prontuarios/pets/{petId}/itens:
+ *   post:
+ *     summary: Adiciona item ao prontuário
+ *     tags: [Prontuarios]
+ *     security:
+ *       - bearerAuth: []
+ */
 router.post(
   "/pets/:petId/itens",
   authMiddleware,
