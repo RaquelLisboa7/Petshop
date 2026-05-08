@@ -10,38 +10,74 @@ const statusFlow = {
   cancelado: [],
 };
 
+const VALORES_BASE = {
+  consulta: 120,
+  retorno: 90,
+  vacina: 70,
+  cirurgia: 350,
+  exame: 180,
+  internacao: 500,
+};
+
+function getValorAtendimento(tipo) {
+  return VALORES_BASE[tipo] ?? VALORES_BASE.consulta;
+}
+
 async function updateStatus(atendimentoId, newStatus, actor) {
-  const atendimento = await prisma.atendimento.findUnique({
-    where: { id: atendimentoId },
-  });
+  return prisma.$transaction(async (tx) => {
+    const atendimento = await tx.atendimento.findUnique({
+      where: { id: atendimentoId },
+      include: {
+        pagamento: true,
+      },
+    });
 
-  if (!atendimento) {
-    throw new AppError("Atendimento não encontrado", 404);
-  }
+    if (!atendimento) {
+      throw new AppError("Atendimento não encontrado", 404);
+    }
 
-  const currentStatus = atendimento.status;
+    const currentStatus = atendimento.status;
 
-  if (currentStatus === newStatus) {
-    throw new AppError("Status já está definido", 400);
-  }
+    if (currentStatus === newStatus) {
+      throw new AppError("Status já está definido", 400);
+    }
 
-  if (["finalizado", "cancelado"].includes(currentStatus)) {
-    throw new AppError("Não é possível alterar este atendimento", 400);
-  }
+    if (["finalizado", "cancelado"].includes(currentStatus)) {
+      throw new AppError("Não é possível alterar este atendimento", 400);
+    }
 
-  const allowedTransitions = statusFlow[currentStatus];
+    const allowedTransitions = statusFlow[currentStatus];
 
-  if (!allowedTransitions.includes(newStatus)) {
-    throw new AppError(
-      `Transição inválida de ${currentStatus} para ${newStatus}`,
-      400
-    );
-  }
+    if (!allowedTransitions.includes(newStatus)) {
+      throw new AppError(
+        `Transição inválida de ${currentStatus} para ${newStatus}`,
+        400
+      );
+    }
 
-  const updated = await prisma.$transaction(async (tx) => {
-    const result = await tx.atendimento.update({
+    if (["em_atendimento", "finalizado"].includes(newStatus)) {
+      if (!atendimento.pagamento || atendimento.pagamento.status !== "pago") {
+        throw new AppError(
+          "Atendimento só pode avançar com pagamento confirmado",
+          409
+        );
+      }
+    }
+
+    const updated = await tx.atendimento.update({
       where: { id: atendimentoId },
       data: { status: newStatus },
+    });
+
+    await tx.historicoAtendimento.create({
+      data: {
+        atendimentoId,
+        tipo: "status",
+        descricao: `${currentStatus} -> ${newStatus}`,
+        deStatus: currentStatus,
+        paraStatus: newStatus,
+        actorId: actor.userId,
+      },
     });
 
     await logAction(tx, {
@@ -53,10 +89,47 @@ async function updateStatus(atendimentoId, newStatus, actor) {
       details: `${currentStatus} -> ${newStatus}`,
     });
 
+    const result = await tx.atendimento.findUnique({
+      where: { id: atendimentoId },
+      include: {
+        tutor: {
+          select: {
+            id: true,
+            name: true,
+            email: true,
+            role: true,
+          },
+        },
+        pet: {
+          select: {
+            id: true,
+            name: true,
+            species: true,
+            breed: true,
+            sex: true,
+            castrated: true,
+          },
+        },
+        agendamento: true,
+        veterinario: {
+          select: {
+            id: true,
+            name: true,
+            email: true,
+            role: true,
+          },
+        },
+        pagamento: true,
+        historico: {
+          orderBy: {
+            createdAt: "asc",
+          },
+        },
+      },
+    });
+
     return result;
   });
-
-  return updated;
 }
 
 async function create({ agendamentoId, actor }) {
@@ -115,6 +188,39 @@ async function create({ agendamentoId, actor }) {
         agendamentoId: agendamento.id,
         status: "agendado",
       },
+    });
+
+    await tx.pagamento.create({
+      data: {
+        atendimentoId: created.id,
+        status: "pendente",
+        valor: getValorAtendimento(agendamento.tipo),
+        createdById: actor.userId,
+      },
+    });
+
+    await tx.historicoAtendimento.create({
+      data: {
+        atendimentoId: created.id,
+        tipo: "status",
+        descricao: "Atendimento criado com status agendado",
+        deStatus: null,
+        paraStatus: "agendado",
+        actorId: actor.userId,
+      },
+    });
+
+    await logAction(tx, {
+      action: "ATENDIMENTO_CRIADO",
+      entity: "Atendimento",
+      entityId: created.id,
+      actorId: actor.userId,
+      actorRole: actor.role,
+      details: `Criado a partir do agendamento ${agendamento.id}`,
+    });
+
+    const result = await tx.atendimento.findUnique({
+      where: { id: created.id },
       include: {
         tutor: {
           select: {
@@ -143,19 +249,16 @@ async function create({ agendamentoId, actor }) {
             role: true,
           },
         },
+        pagamento: true,
+        historico: {
+          orderBy: {
+            createdAt: "asc",
+          },
+        },
       },
     });
 
-    await logAction(tx, {
-      action: "ATENDIMENTO_CRIADO",
-      entity: "Atendimento",
-      entityId: created.id,
-      actorId: actor.userId,
-      actorRole: actor.role,
-      details: `Criado a partir do agendamento ${agendamento.id}`,
-    });
-
-    return created;
+    return result;
   });
 
   return atendimento;
@@ -164,7 +267,6 @@ async function create({ agendamentoId, actor }) {
 async function findAll(actor) {
   const where = {};
 
-  // cliente só vê os próprios atendimentos
   if (actor.role === "cliente") {
     where.tutorId = actor.userId;
   }
@@ -199,6 +301,7 @@ async function findAll(actor) {
           role: true,
         },
       },
+      pagamento: true,
     },
     orderBy: {
       createdAt: "desc",
@@ -237,6 +340,12 @@ async function findById(id, actor) {
           role: true,
         },
       },
+      pagamento: true,
+      historico: {
+        orderBy: {
+          createdAt: "asc",
+        },
+      },
     },
   });
 
@@ -244,7 +353,6 @@ async function findById(id, actor) {
     throw new AppError("Atendimento não encontrado", 404);
   }
 
-  // cliente só acessa o próprio
   if (actor.role === "cliente" && atendimento.tutorId !== actor.userId) {
     throw new AppError("Acesso negado", 403);
   }
@@ -256,5 +364,5 @@ module.exports = {
   updateStatus,
   create,
   findAll,
-  findById
+  findById,
 };

@@ -74,5 +74,5 @@ module.exports = {
   create,
   updateStatus,
   index,
-  show
+  show,
 };
