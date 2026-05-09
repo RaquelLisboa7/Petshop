@@ -54,7 +54,6 @@ router.get(
   authorize("admin", "atendente", "veterinario", "cliente"),
   pagamentoController.show
 );
-
 /**
  * @swagger
  * /pagamentos/{id}/processar:
@@ -63,6 +62,24 @@ router.get(
  *     tags: [Pagamentos]
  *     security:
  *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: integer
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - status
+ *             properties:
+ *               status:
+ *                 type: string
+ *                 example: aprovado
  *     responses:
  *       200:
  *         description: Pagamento processado

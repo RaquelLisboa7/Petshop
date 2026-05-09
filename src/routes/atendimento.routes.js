@@ -52,6 +52,18 @@ router.get("/:id", authMiddleware, authorize("admin", "atendente", "veterinario"
 /**
  * @swagger
  * /atendimentos/{id}/status:
+ *  *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - status
+ *             properties:
+ *               status:
+ *                 type: string
+ *                 example: em_atendimento
  *   patch:
  *     summary: Atualiza status do atendimento
  *     tags: [Atendimentos]
@@ -73,10 +85,22 @@ router.patch("/:id/status", authMiddleware, authorize("admin", "atendente", "vet
  * @swagger
  * /atendimentos:
  *   post:
- *     summary: Cria atendimento a partir de um agendamento confirmado
+ *     summary: Cria atendimento a partir de agendamento confirmado
  *     tags: [Atendimentos]
  *     security:
  *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - agendamentoId
+ *             properties:
+ *               agendamentoId:
+ *                 type: integer
+ *                 example: 1
  *     responses:
  *       201:
  *         description: Atendimento criado

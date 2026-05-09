@@ -12,7 +12,6 @@ const {
 } = require("../schemas/prontuario.schema");
 
 const router = Router();
-
 /**
  * @swagger
  * /prontuarios/pets/{petId}:
@@ -21,6 +20,15 @@ const router = Router();
  *     tags: [Prontuarios]
  *     security:
  *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: petId
+ *         required: true
+ *         schema:
+ *           type: integer
+ *     responses:
+ *       200:
+ *         description: Prontuário encontrado
  */
 router.get(
   "/pets/:petId",
@@ -55,6 +63,37 @@ router.get(
  *     tags: [Prontuarios]
  *     security:
  *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: petId
+ *         required: true
+ *         schema:
+ *           type: integer
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - titulo
+ *               - descricao
+ *             properties:
+ *               titulo:
+ *                 type: string
+ *                 example: Consulta inicial
+ *               descricao:
+ *                 type: string
+ *                 example: Animal apresentou melhora clínica
+ *  *     parameters:
+ *       - in: path
+ *         name: petId
+ *         required: true
+ *         schema:
+ *           type: integer
+ *     responses:
+ *       201:
+ *         description: Item criado
  */
 router.post("/pets/:petId/itens", authMiddleware, authorize("veterinario"), validate(createProntuarioItemSchema), prontuarioController.createItem);
 

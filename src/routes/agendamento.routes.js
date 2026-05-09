@@ -12,7 +12,6 @@ const {
 } = require("../schemas/agendamento.schema");
 
 const router = Router();
-
 /**
  * @swagger
  * /agendamentos:
@@ -21,6 +20,22 @@ const router = Router();
  *     tags: [Agendamentos]
  *     security:
  *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - petId
+ *               - data
+ *             properties:
+ *               petId:
+ *                 type: integer
+ *                 example: 1
+ *               data:
+ *                 type: string
+ *                 example: "2026-05-20T14:00:00.000Z"
  *     responses:
  *       201:
  *         description: Agendamento criado
