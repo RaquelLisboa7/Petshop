@@ -7,8 +7,10 @@ async function findAll(actor) {
 
   if (actor.role === "cliente") {
     where.atendimento = {
-      tutorId: actor.userId,
-    };
+  is: {
+    tutorId: actor.userId,
+  },
+};
   }
 
   return prisma.pagamento.findMany({

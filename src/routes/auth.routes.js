@@ -1,11 +1,16 @@
-const express = require("express");
-const authController = require("../controllers/auth.controller");
+const { Router } = require("express");
 const authMiddleware = require("../middlewares/auth.middleware");
 const authorize = require("../middlewares/authorize.middleware");
 const validate = require("../middlewares/validate.middleware");
-const { registerSchema, loginSchema, refreshSchema} = require("../validations/auth.validation");
+const {
+  registerSchema,
+  loginSchema,
+  refreshSchema,
+} = require("../schemas/auth.schema");
+const authController = require("../controllers/auth.controller");
 
-const router = express.Router();
+
+const router = Router();
 
 /**
  * @swagger
@@ -73,7 +78,7 @@ router.post("/register", validate(registerSchema), authController.register);
  *       401:
  *         description: Credenciais inválidas
  */
-router.post("/login",  validate(loginSchema), authController.login);
+router.post("/login", validate(loginSchema), authController.login);
 
 /**
  * @swagger

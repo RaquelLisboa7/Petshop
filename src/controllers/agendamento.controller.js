@@ -1,12 +1,8 @@
 const agendamentoService = require("../services/agendamento.service");
-const {
-  createAgendamentoSchema,
-  cancelAgendamentoSchema,
-} = require("../validations/agendamento.validation");
 
 async function create(req, res, next) {
   try {
-    const data = createAgendamentoSchema.parse(req.body);
+    const data = req.validated.body;
 
     const agendamento = await agendamentoService.create({
       tutorId: Number(req.user.sub),
@@ -24,11 +20,10 @@ async function create(req, res, next) {
 
 async function cancel(req, res, next) {
   try {
-    const { id } = req.params;
-    cancelAgendamentoSchema.parse(req.body);
+    const { id } = req.validated.params;
 
     const agendamento = await agendamentoService.cancel({
-      agendamentoId: Number(id),
+      agendamentoId: id,
       actor: {
         userId: Number(req.user.sub),
         role: req.user.role,
@@ -40,6 +35,23 @@ async function cancel(req, res, next) {
     return next(error);
   }
 }
+
+async function show(req, res, next) {
+  try {
+    const { id } = req.validated.params;
+
+    const agendamento = await agendamentoService.findById(id, {
+      userId: Number(req.user.sub),
+      role: req.user.role,
+    });
+
+    return res.status(200).json(agendamento);
+  } catch (error) {
+    return next(error);
+  }
+}
+
+
 
 async function index(req, res, next) {
   try {
@@ -54,20 +66,7 @@ async function index(req, res, next) {
   }
 }
 
-async function show(req, res, next) {
-  try {
-    const { id } = req.params;
 
-    const agendamento = await agendamentoService.findById(Number(id), {
-      userId: Number(req.user.sub),
-      role: req.user.role,
-    });
-
-    return res.status(200).json(agendamento);
-  } catch (error) {
-    return next(error);
-  }
-}
 
 module.exports = {
   create,

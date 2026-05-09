@@ -1,10 +1,9 @@
 const authService = require("../services/auth.service");
-const { registerSchema, loginSchema } = require("../validations/auth.validation");
 const { prisma } = require("../lib/prisma");
 
 async function register(req, res, next) {
   try {
-    const data = registerSchema.parse(req.body);
+    const data = req.validated.body;
     const user = await authService.register(data);
     return res.status(201).json(user);
   } catch (error) {
@@ -14,7 +13,7 @@ async function register(req, res, next) {
 
 async function login(req, res, next) {
   try {
-    const data = loginSchema.parse(req.body);
+    const data = req.validated.body;
     const result = await authService.login(data);
     return res.status(200).json(result);
   } catch (error) {
@@ -24,7 +23,7 @@ async function login(req, res, next) {
 
 async function refresh(req, res, next) {
   try {
-    const { refreshToken } = req.body;
+    const { refreshToken } = req.validated.body;
     const result = await authService.refresh({ refreshToken });
     return res.status(200).json(result);
   } catch (error) {
@@ -34,7 +33,7 @@ async function refresh(req, res, next) {
 
 async function logout(req, res, next) {
   try {
-    const { refreshToken } = req.body;
+    const { refreshToken } = req.validated.body;
     await authService.logout({ refreshToken });
     return res.status(204).send();
   } catch (error) {

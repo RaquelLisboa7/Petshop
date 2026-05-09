@@ -1,10 +1,17 @@
 const { Router } = require("express");
+
 const prontuarioController = require("../controllers/prontuario.controller");
+
 const authMiddleware = require("../middlewares/auth.middleware");
 const authorize = require("../middlewares/authorize.middleware");
+const validate = require("../middlewares/validate.middleware");
+
+const {
+  prontuarioIdSchema,
+  createProntuarioItemSchema,
+} = require("../schemas/prontuario.schema");
 
 const router = Router();
-
 
 /**
  * @swagger
@@ -19,6 +26,7 @@ router.get(
   "/pets/:petId",
   authMiddleware,
   authorize("admin", "atendente", "veterinario", "cliente"),
+  validate(prontuarioIdSchema),
   prontuarioController.show
 );
 
@@ -35,6 +43,7 @@ router.get(
   "/pets/:petId/itens",
   authMiddleware,
   authorize("admin", "atendente", "veterinario", "cliente"),
+  validate(prontuarioIdSchema),
   prontuarioController.listItems
 );
 
@@ -47,11 +56,6 @@ router.get(
  *     security:
  *       - bearerAuth: []
  */
-router.post(
-  "/pets/:petId/itens",
-  authMiddleware,
-  authorize("veterinario"),
-  prontuarioController.createItem
-);
+router.post("/pets/:petId/itens", authMiddleware, authorize("veterinario"), validate(createProntuarioItemSchema), prontuarioController.createItem);
 
 module.exports = router;

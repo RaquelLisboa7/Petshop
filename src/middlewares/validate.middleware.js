@@ -1,16 +1,32 @@
+const { ZodError } = require("zod");
+
 function validate(schema) {
-  return (req, res, next) => {
-    const result = schema.safeParse(req.body);
+  return async (req, res, next) => {
+    try {
+      const data = {
+        body: req.body,
+        params: req.params,
+        query: req.query,
+      };
 
-    if (!result.success) {
-      return res.status(400).json({
-        error: "Dados inválidos",
-        details: result.error.flatten(),
-      });
+      const validated = await schema.parseAsync(data);
+
+      req.validated = validated;
+
+      next();
+    } catch (error) {
+      if (error instanceof ZodError) {
+        return res.status(400).json({
+          error: "Erro de validação",
+          details: error.issues.map((issue) => ({
+            field: issue.path.join("."),
+            message: issue.message,
+          })),
+        });
+      }
+
+      next(error);
     }
-
-    req.body = result.data;
-    return next();
   };
 }
 

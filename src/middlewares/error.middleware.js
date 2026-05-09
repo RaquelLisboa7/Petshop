@@ -4,17 +4,10 @@ function errorMiddleware(err, req, res, next) {
   }
 
   const statusCode = err.statusCode || 500;
-  const message = err.isOperational ? err.message : "Erro interno no servidor";
 
-  const payload = {
-    error: message,
-  };
-
-  if (err.details) {
-    payload.details = err.details;
-  }
-
-  return res.status(statusCode).json(payload);
+  return res.status(statusCode).json({
+    error: err.isOperational ? err.message : "Erro interno no servidor",
+  });
 }
 
 module.exports = errorMiddleware;

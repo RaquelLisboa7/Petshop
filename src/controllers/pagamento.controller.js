@@ -16,9 +16,9 @@ async function index(req, res, next) {
 
 async function show(req, res, next) {
   try {
-    const { id } = req.params;
+    const { id } = req.validated.params;
 
-    const pagamento = await pagamentoService.findById(Number(id), {
+    const pagamento = await pagamentoService.findById(id, {
       userId: Number(req.user.sub),
       role: req.user.role,
     });
@@ -31,11 +31,11 @@ async function show(req, res, next) {
 
 async function process(req, res, next) {
   try {
-    const { id } = req.params;
-    const data = processPagamentoSchema.parse(req.body);
+    const { id } = req.validated.params;
+    const data = req.validated.body;
 
     const pagamento = await pagamentoService.process({
-      pagamentoId: Number(id),
+      pagamentoId: id,
       actor: {
         userId: Number(req.user.sub),
         role: req.user.role,

@@ -1,7 +1,15 @@
 const { Router } = require("express");
+
 const atendimentoController = require("../controllers/atendimento.controller");
+
 const authMiddleware = require("../middlewares/auth.middleware");
 const authorize = require("../middlewares/authorize.middleware");
+const validate = require("../middlewares/validate.middleware");
+
+const {
+  createAtendimentoSchema,
+  updateStatusSchema,
+} = require("../schemas/atendimento.schema");
 
 const router = Router();
 
@@ -18,12 +26,8 @@ const router = Router();
  *       200:
  *         description: Lista de atendimentos
  */
-router.get(
-  "/",
-  authMiddleware,
-  authorize("admin", "atendente", "veterinario"),
-  atendimentoController.index
-);
+
+router.get("/", authMiddleware, authorize("admin", "atendente", "veterinario"), atendimentoController.index);
 
 /**
  * @swagger
@@ -43,12 +47,7 @@ router.get(
  *       200:
  *         description: Atendimento encontrado
  */
-router.get(
-  "/:id",
-  authMiddleware,
-  authorize("admin", "atendente", "veterinario"),
-  atendimentoController.show
-);
+router.get("/:id", authMiddleware, authorize("admin", "atendente", "veterinario"), atendimentoController.show);
 
 /**
  * @swagger
@@ -68,12 +67,7 @@ router.get(
  *       200:
  *         description: Status atualizado
  */
-router.patch(
-  "/:id/status",
-  authMiddleware,
-  authorize("admin", "atendente", "veterinario"),
-  atendimentoController.updateStatus
-);
+router.patch("/:id/status", authMiddleware, authorize("admin", "atendente", "veterinario"), validate(updateStatusSchema), atendimentoController.updateStatus);
 
 /**
  * @swagger
@@ -87,11 +81,6 @@ router.patch(
  *       201:
  *         description: Atendimento criado
  */
-router.post(
-  "/",
-  authMiddleware,
-  authorize("admin", "atendente"),
-  atendimentoController.create
-);
+router.post("/", authMiddleware, authorize("admin", "atendente"), validate(createAtendimentoSchema), atendimentoController.create);
 
 module.exports = router;

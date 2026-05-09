@@ -1,10 +1,16 @@
 const { Router } = require("express");
+
 const pagamentoController = require("../controllers/pagamento.controller");
+
 const authMiddleware = require("../middlewares/auth.middleware");
 const authorize = require("../middlewares/authorize.middleware");
+const validate = require("../middlewares/validate.middleware");
+
+const {
+  processPagamentoSchema,
+} = require("../schemas/pagamento.schema");
 
 const router = Router();
-
 /**
  * @swagger
  * /pagamentos:
@@ -61,11 +67,6 @@ router.get(
  *       200:
  *         description: Pagamento processado
  */
-router.patch(
-  "/:id/processar",
-  authMiddleware,
-  authorize("admin", "atendente"),
-  pagamentoController.process
-);
+router.patch("/:id/processar", authMiddleware, authorize("admin", "atendente"), validate(processPagamentoSchema), pagamentoController.process);
 
 module.exports = router;
